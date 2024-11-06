@@ -4,7 +4,6 @@ import javax.net.ssl.*;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
@@ -19,15 +18,14 @@ class ExportUrlCerts {
         // Create all-trusting host name verifier
         HostnameVerifier validHosts = (arg0, arg1) -> true;
         try {
-            TrustManagerFactory factory;
-            factory = TrustManagerFactory.getInstance("X509");
-            factory.init((KeyStore) null);
-            TrustManager[] trustManagers = factory.getTrustManagers();
-            for (int i = 0; i < trustManagers.length; i++) {
-                if (trustManagers[i] instanceof X509TrustManager) {
-                    trustManagers[i] = new IgnoreExpirationTrustManager((X509TrustManager) trustManagers[i]);
-                }
-            }
+            /* Start of Fix */
+            TrustManager[] trustManagers = new TrustManager[] { new X509TrustManager() {
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
+                public void checkClientTrusted(X509Certificate[] certs, String authType) { }
+                public void checkServerTrusted(X509Certificate[] certs, String authType) { }
+
+            } };
+
             sc = SSLContext.getInstance("TLS");
             sc.init(null, trustManagers, null);
 
@@ -44,6 +42,7 @@ class ExportUrlCerts {
     }
 
     public void test(String url) throws IOException, CertificateEncodingException {
+        SimpleDateFormat sd = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss");
         // Установка соединения и получение сертификатов
         URL destinationURL = new URL(url);
         HttpsURLConnection conn = (HttpsURLConnection) destinationURL.openConnection();
@@ -56,17 +55,20 @@ class ExportUrlCerts {
         String baseFileName = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
         for (int i = 0; i < certs.length; i++) {
             X509Certificate cert = (X509Certificate) certs[i];
-            String fileName = baseFileName + i + ".pem";
+            String fileName = baseFileName + i + ".crt";
             try (FileOutputStream fos = new FileOutputStream(fileName)) {
                 fos.write("-----BEGIN CERTIFICATE-----\n".getBytes());
                 fos.write(java.util.Base64.getMimeEncoder(64, "\n".getBytes()).encode(cert.getEncoded()));
                 fos.write("\n-----END CERTIFICATE-----\n".getBytes());
             }
-            System.out.println("Сертификат сохранен: " + fileName);
+            System.out.printf("Subject: %s  ---->  Issuer: %s%n", cert.getSubjectDN().toString(), cert.getIssuerDN().toString());
+            System.out.printf("Valid from %s till %s%n", sd.format(cert.getNotBefore()), sd.format(cert.getNotAfter()));
+            System.out.printf("Сертификат сохранен: %s%n", fileName);
         }
     }
 
     public static void main(String[] args) throws Exception {
+//        String[] args = {"https://stackoverflow.com:443"};
         if (args.length == 0) {
             System.out.println("Usage: exportUrlCerts url");
             return;
