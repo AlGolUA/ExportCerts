@@ -20,7 +20,7 @@ class ExportUrlCerts {
         try {
             /* Start of Fix */
             TrustManager[] trustManagers = new TrustManager[] { new X509TrustManager() {
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
+                public X509Certificate[] getAcceptedIssuers() { return null; }
                 public void checkClientTrusted(X509Certificate[] certs, String authType) { }
                 public void checkServerTrusted(X509Certificate[] certs, String authType) { }
 
@@ -42,7 +42,8 @@ class ExportUrlCerts {
     }
 
     public void test(String url) throws IOException, CertificateEncodingException {
-        SimpleDateFormat sd = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss");
+        System.out.printf("Export certificates from %s%n", url);
+        SimpleDateFormat sd = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
         // Установка соединения и получение сертификатов
         URL destinationURL = new URL(url);
         HttpsURLConnection conn = (HttpsURLConnection) destinationURL.openConnection();
@@ -63,7 +64,7 @@ class ExportUrlCerts {
             }
             System.out.printf("Subject: %s  ---->  Issuer: %s%n", cert.getSubjectDN().toString(), cert.getIssuerDN().toString());
             System.out.printf("Valid from %s till %s%n", sd.format(cert.getNotBefore()), sd.format(cert.getNotAfter()));
-            System.out.printf("Сертификат сохранен: %s%n", fileName);
+            System.out.printf("Certificate stored: %s%n", fileName);
         }
     }
 
